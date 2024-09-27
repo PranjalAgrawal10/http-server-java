@@ -1,60 +1,62 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.commons.io.IOUtils;
 public class Main {
-    public static void main(String[] args) {
-        // Your
-        // You can use print statements as follows for debugging, they'll be visible when running tests.
+    public static void main(String[] args) throws IOException {
+        // You can use print statements as follows for debugging, they'll be visible
+        // when running tests.
         System.out.println("Logs from your program will appear here!");
-
+        ServerSocket serverSocket = null;
+        Socket clientSocket = null;
+        DataOutputStream out = null;
+        Map<String, String> httpRequest = new HashMap<>();
         try {
-            ServerSocket serverSocket = new ServerSocket(4221);
-
-            // Since the tester restarts your program quite often, setting SO_REUSEADDR
-            // ensures that we don't run into 'Address already in use' errors
+            serverSocket = new ServerSocket(4221);
             serverSocket.setReuseAddress(true);
-
-            Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
-            System.out.println("accepted new connection");
-
-            // Read HTTP request
-            BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            String requestLine = reader.readLine();
-            System.out.println("Request Line: " + requestLine);
-
-            // Extract URL path from request line
-            String[] requestParts = requestLine.split(" ");
-            String urlPath = requestParts[1];
-            System.out.println("URL Path: " + urlPath);
-
-            // Determine response based on URL path
-            String httpResponse;
-            if (urlPath.startsWith("/echo/")) {
-                String echoString = urlPath.substring(6); // Extract the string after /echo/
-                String contentType = "text/plain";
-                int contentLength = echoString.length();
-                httpResponse = "HTTP/1.1 200 OK\r\n" +
-                               "Content-Type: " + contentType + "\r\n" +
-                               "Content-Length: " + contentLength + "\r\n" +
-                               "\r\n" +
-                               echoString;
+            clientSocket = serverSocket.accept(); // Wait for connection from client.
+            // use client request to determine if endpoint is valid
+            DataInputStream in = new DataInputStream(clientSocket.getInputStream());
+            int readableBytes = clientSocket.getInputStream().available();
+            byte[] textAsBytes =
+                    clientSocket.getInputStream().readNBytes(readableBytes);
+            // parse text to see values
+            parseRequest(httpRequest, textAsBytes);
+            out = new DataOutputStream(clientSocket.getOutputStream());
+            if ("/".equals(httpRequest.get("target"))) {
+                out.write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
+            } else if (httpRequest.get("target").startsWith("/echo/")) {
+                String queryParam = httpRequest.get("target").split("/")[2];
+                out.write(
+                        ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " +
+                                queryParam.length() + "\r\n\r\n" + queryParam)
+                                .getBytes());
             } else {
-                httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+                out.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
             }
-
-            // Send HTTP response
-            OutputStream outputStream = clientSocket.getOutputStream();
-            outputStream.write(httpResponse.getBytes("UTF-8"));
-            outputStream.flush();
-
-            clientSocket.close();
-            serverSocket.close();
+            out.flush();
+            System.out.println("accepted new connection");
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
+        } finally {
+            if (out != null) {
+                out.close();
+            }
         }
+    }
+
+    private static void parseRequest(Map<String, String> ret, byte[] text) {
+        String s = new String(text);
+        String[] requestSplit = s.split("\r\n");
+        parseRequestLine(ret, requestSplit[0]);
+    }
+
+    private static void parseRequestLine(Map<String, String> ret, String s) {
+        String[] requestLineSplit = s.split(" ");
+        ret.put("method", requestLineSplit[0].trim());
+        ret.put("target", requestLineSplit[1].trim());
+        ret.put("version", requestLineSplit[2].trim());
     }
 }
