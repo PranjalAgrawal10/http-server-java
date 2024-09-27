@@ -11,8 +11,6 @@ public class Main {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
 
-        // Uncomment this block to pass the first stage
-
         try {
             ServerSocket serverSocket = new ServerSocket(4221);
 
@@ -35,8 +33,15 @@ public class Main {
 
             // Determine response based on URL path
             String httpResponse;
-            if ("/".equals(urlPath)) {
-                httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
+            if (urlPath.startsWith("/echo/")) {
+                String echoString = urlPath.substring(6); // Extract the string after /echo/
+                String contentType = "text/plain";
+                int contentLength = echoString.length();
+                httpResponse = "HTTP/1.1 200 OK\r\n" +
+                        "Content-Type: " + contentType + "\r\n" +
+                        "Content-Length: " + contentLength + "\r\n" +
+                        "\r\n" +
+                        echoString;
             } else {
                 httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
             }
