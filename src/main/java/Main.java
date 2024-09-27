@@ -1,4 +1,6 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -21,9 +23,26 @@ public class Main {
             Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
             System.out.println("accepted new connection");
 
+            // Read HTTP request
+            BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String requestLine = reader.readLine();
+            System.out.println("Request Line: " + requestLine);
+
+            // Extract URL path from request line
+            String[] requestParts = requestLine.split(" ");
+            String urlPath = requestParts[1];
+            System.out.println("URL Path: " + urlPath);
+
+            // Determine response based on URL path
+            String httpResponse;
+            if ("/".equals(urlPath)) {
+                httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
+            } else {
+                httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+            }
+
             // Send HTTP response
             OutputStream outputStream = clientSocket.getOutputStream();
-            String httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
             outputStream.write(httpResponse.getBytes("UTF-8"));
             outputStream.flush();
 
