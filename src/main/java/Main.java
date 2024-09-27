@@ -38,10 +38,10 @@ public class Main {
                 String contentType = "text/plain";
                 int contentLength = echoString.length();
                 httpResponse = "HTTP/1.1 200 OK\r\n" +
-                        "Content-Type: " + contentType + "\r\n" +
-                        "Content-Length: " + contentLength + "\r\n" +
-                        "\r\n" +
-                        echoString;
+                               "Content-Type: " + contentType + "\r\n" +
+                               "Content-Length: " + contentLength + "\r\n" +
+                               "\r\n" +
+                               echoString;
             } else {
                 httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
             }
