@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.GZIPOutputStream;
 
 public class Main {
     private static String directory;
@@ -85,11 +86,18 @@ public class Main {
             httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
         } else if ("GET".equals(method) && urlPath.startsWith("/echo/")) {
             String echoStr = urlPath.substring(6); // Extract the string after "/echo/"
-            httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + echoStr.length() + "\r\n";
+            byte[] responseBody = echoStr.getBytes("UTF-8");
             if (gzipSupported) {
-                httpResponse += "Content-Encoding: gzip\r\n";
+                ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+                try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream)) {
+                    gzipStream.write(responseBody);
+                }
+                responseBody = byteStream.toByteArray();
+                httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: " + responseBody.length + "\r\n\r\n";
+            } else {
+                httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + responseBody.length + "\r\n\r\n";
             }
-            httpResponse += "\r\n" + echoStr;
+            httpResponse += new String(responseBody, "ISO-8859-1");
         } else if ("GET".equals(method) && "/user-agent".equals(urlPath)) {
             String userAgent = headers.get("User-Agent");
             httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + userAgent.length() + "\r\n";
@@ -102,11 +110,17 @@ public class Main {
             File file = new File(directory, filename);
             if (file.exists()) {
                 byte[] fileContent = Files.readAllBytes(file.toPath());
-                httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " + fileContent.length + "\r\n";
                 if (gzipSupported) {
-                    httpResponse += "Content-Encoding: gzip\r\n";
+                    ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+                    try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream)) {
+                        gzipStream.write(fileContent);
+                    }
+                    fileContent = byteStream.toByteArray();
+                    httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Encoding: gzip\r\nContent-Length: " + fileContent.length + "\r\n\r\n";
+                } else {
+                    httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " + fileContent.length + "\r\n\r\n";
                 }
-                httpResponse += "\r\n" + new String(fileContent);
+                httpResponse += new String(fileContent, "ISO-8859-1");
             } else {
                 httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
             }
