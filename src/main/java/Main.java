@@ -80,20 +80,33 @@ public class Main {
 
     private static String getHttpResponse(String method, String urlPath, Map<String, String> headers) throws IOException {
         String httpResponse;
+        boolean gzipSupported = headers.getOrDefault("Accept-Encoding", "").contains("gzip");
         if ("GET".equals(method) && "/".equals(urlPath)) {
             httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
         } else if ("GET".equals(method) && urlPath.startsWith("/echo/")) {
             String echoStr = urlPath.substring(6); // Extract the string after "/echo/"
-            httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + echoStr.length() + "\r\n\r\n" + echoStr;
+            httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + echoStr.length() + "\r\n";
+            if (gzipSupported) {
+                httpResponse += "Content-Encoding: gzip\r\n";
+            }
+            httpResponse += "\r\n" + echoStr;
         } else if ("GET".equals(method) && "/user-agent".equals(urlPath)) {
             String userAgent = headers.get("User-Agent");
-            httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + userAgent.length() + "\r\n\r\n" + userAgent;
+            httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + userAgent.length() + "\r\n";
+            if (gzipSupported) {
+                httpResponse += "Content-Encoding: gzip\r\n";
+            }
+            httpResponse += "\r\n" + userAgent;
         } else if ("GET".equals(method) && urlPath.startsWith("/files/")) {
             String filename = urlPath.substring(7); // Extract the filename after "/files/"
             File file = new File(directory, filename);
             if (file.exists()) {
                 byte[] fileContent = Files.readAllBytes(file.toPath());
-                httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " + fileContent.length + "\r\n\r\n" + new String(fileContent);
+                httpResponse = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " + fileContent.length + "\r\n";
+                if (gzipSupported) {
+                    httpResponse += "Content-Encoding: gzip\r\n";
+                }
+                httpResponse += "\r\n" + new String(fileContent);
             } else {
                 httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
             }
